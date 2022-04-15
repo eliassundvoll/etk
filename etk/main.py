@@ -2,11 +2,13 @@ import tkinter as tk
 import os
 import random
 
-KEY_SENSETIVITY = 2
+KEY_SENSETIVITY = 20
 OAR_FREQUENCY = 20
-COURSE_LENGHT = 2000
+COURSE_LENGHT = 20000
 SKY_HEIGHT = 250
-CLOUD_AMOUNT = 10
+CLOUD_AMOUNT = 50
+COURSE_MOVE_LEFT_LIMIT = 600
+COURSE_MOVE_RIGHT_LIMIT = 1000
 
 
 class Course(object):
@@ -45,12 +47,13 @@ class Course(object):
 
         self.create_clouds(cloud_imgs)
 
-        position = tk.StringVar()
-        label = tk.Label(window, textvariable=position)
+        position_var = tk.StringVar()
+        label = tk.Label(window, textvariable=position_var)
         label.pack()
 
+
         Line(self.course)
-        boat = Boat(self.course, boat_img, oars, position)
+        boat = Boat(self.course, boat_img, oars, position_var)
 
         window.bind("<Left>", boat.left)
         window.bind("<Right>", boat.right)
@@ -85,8 +88,12 @@ class Boat(object):
         self.position_label = position
         self.position_label.set("0")
         self.position = 0
+        self.screen_positon = 0
         for oar in self.oars:
             self.course.itemconfig(oar, state=tk.HIDDEN)
+
+        self.course_offset = 0
+
 
     def left(self, e):
         delta_x = -KEY_SENSETIVITY
@@ -97,13 +104,27 @@ class Boat(object):
         self.move_vessel(delta_x)
 
     def move_vessel(self, delta_x):
+        if self.position + delta_x < 0:
+            return
         self.position += delta_x
         self.position_label.set(self.position)
-        self.course.move("vessel", delta_x, 0)
         index = int((self.position / OAR_FREQUENCY) % 4)
         for oar in self.oars:
             self.course.itemconfig(oar, state=tk.HIDDEN)
         self.course.itemconfig(self.oars[index], state=tk.NORMAL)
+
+        if self.screen_positon + delta_x > COURSE_MOVE_RIGHT_LIMIT and delta_x > 0 :  # Moving right in to right zone
+            self.course_offset += delta_x
+            self.course.move("background", -delta_x, 0)
+        elif self.position < COURSE_MOVE_LEFT_LIMIT:
+            self.course.move("vessel", delta_x, 0)
+            self.screen_positon += delta_x
+        elif self.screen_positon - delta_x < COURSE_MOVE_LEFT_LIMIT and delta_x < 0:  # Moving left in to left zone
+            self.course_offset -= delta_x
+            self.course.move("background", -delta_x, 0)
+        else:  # Moving in midle zone
+            self.course.move("vessel", delta_x, 0)
+            self.screen_positon += delta_x  
 
 
 course = Course()
